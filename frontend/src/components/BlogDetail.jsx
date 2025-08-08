@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../../context/authcontext';
 
 function stringToColor(str) {
   let hash = 0;
@@ -17,12 +18,33 @@ function stringToColor(str) {
 const BlogDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user, IsLoggedIn } = useAuth();
   const [blog, setBlog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [readingProgress, setReadingProgress] = useState(0);
+  const [likesCount, setLikesCount] = useState(0);
+  const [liked, setLiked] = useState(false);
+  const [liking, setLiking] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [postingComment, setPostingComment] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState(null);
+  const [commentMessage, setCommentMessage] = useState(null); // success/info
+  const [commentError, setCommentError] = useState(null);
+
+  const normalizeId = (value) => {
+    try {
+      if (value == null) return '';
+      if (typeof value === 'string') return value;
+      if (typeof value === 'object' && value.toString) return value.toString();
+      return String(value);
+    } catch (_) {
+      return String(value);
+    }
+  };
 
   useEffect(() => {
     const fetchBlog = async () => {
@@ -30,7 +52,12 @@ const BlogDetail = () => {
         setLoading(true);
         setError(null);
         const res = await axios.get(`http://localhost:8000/blog/getblog/${id}`);
-        setBlog(res.data.blog);
+        const b = res.data.blog;
+        setBlog(b);
+        const likedBy = Array.isArray(b?.likedBy) ? b.likedBy : [];
+        setLikesCount(likedBy.length);
+        setLiked(IsLoggedIn && likedBy.some(uid => String(uid) === String(user?._id)));
+        setComments(Array.isArray(b?.comments) ? b.comments : []);
       } catch (err) {
         console.error('Error fetching blog:', err);
         setError(err.response?.data?.message || 'Failed to load blog details. Please try again later.');
@@ -39,7 +66,7 @@ const BlogDetail = () => {
       }
     };
     fetchBlog();
-  }, [id]);
+  }, [id, IsLoggedIn, user?._id]);
 
   // Reading progress calculation
   useEffect(() => {
@@ -83,13 +110,116 @@ const BlogDetail = () => {
     if (navigator.share) {
       navigator.share({
         title: blog?.title,
-        text: blog?.summery || blog?.description?.substring(0, 100),
+        text: blog?.summary || blog?.summery || blog?.description?.substring(0, 100),
         url: window.location.href,
       });
     } else {
       // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href);
       // You could add a toast notification here
+    }
+  };
+
+  const isOwner = useMemo(() => {
+    if (!blog || !user) return false;
+    return String(blog.userid) === String(user._id);
+  }, [blog, user]);
+
+  const handleToggleLike = async () => {
+    if (!IsLoggedIn) {
+      navigate('/login');
+      return;
+    }
+    try {
+      setLiking(true);
+      const res = await axios.post(
+        `http://localhost:8000/blog/${id}/like`,
+        {},
+        { withCredentials: true }
+      );
+      if (res.data?.success) {
+        setLiked(res.data.liked);
+        setLikesCount(res.data.likes ?? (res.data.liked ? likesCount + 1 : Math.max(0, likesCount - 1)));
+      }
+    } catch (err) {
+      console.error('Failed to toggle like', err);
+    } finally {
+      setLiking(false);
+    }
+  };
+
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!IsLoggedIn) {
+      navigate('/login');
+      return;
+    }
+    const text = newComment.trim();
+    if (!text) return;
+    try {
+      setPostingComment(true);
+      const res = await axios.post(
+        `http://localhost:8000/blog/${id}/comments`,
+        { text },
+        { withCredentials: true }
+      );
+      if (res.data?.success) {
+        setComments(res.data.comments || []);
+        setNewComment('');
+      }
+    } catch (err) {
+      console.error('Failed to add comment', err);
+    } finally {
+      setPostingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    setCommentMessage(null);
+    setCommentError(null);
+    if (!IsLoggedIn) {
+      setCommentError('Please log in to delete comments.');
+      navigate('/login');
+      return;
+    }
+    const prevComments = comments;
+    try {
+      setDeletingCommentId(commentId);
+      // Optimistic update
+      setComments((prev) => prev.filter((c) => normalizeId(c._id) !== normalizeId(commentId)));
+      const res = await axios.delete(
+        `http://localhost:8000/blog/${id}/comments/${commentId}`,
+        {
+          withCredentials: true,
+          headers: {
+            'Accept': 'application/json',
+          },
+        }
+      );
+      if (res.data?.success) {
+        // Use authoritative server state if provided
+        if (Array.isArray(res.data.comments)) {
+          setComments(res.data.comments);
+        } else {
+          // Ensure the optimistic state persists
+          setComments((prev) => prev.filter((c) => normalizeId(c._id) !== normalizeId(commentId)));
+        }
+        setCommentMessage('Comment deleted.');
+        setTimeout(() => setCommentMessage(null), 2000);
+      } else {
+        setComments(prevComments);
+        setCommentError(res.data?.message || 'Failed to delete comment.');
+      }
+    } catch (err) {
+      // Revert optimistic update
+      setComments(prevComments);
+      const status = err?.response?.status;
+      if (status === 401) setCommentError('Not authorized. Please log in.');
+      else if (status === 403) setCommentError('You can only delete your own comment or comments on your blog.');
+      else if (status === 404) setCommentError('Comment or blog not found.');
+      else setCommentError('Something went wrong deleting the comment.');
+    } finally {
+      setDeletingCommentId(null);
     }
   };
 
@@ -257,7 +387,7 @@ const BlogDetail = () => {
               </div>
 
               {/* Summary */}
-              {blog.summery && (
+              {(blog.summary || blog.summery) && (
                 <div className="mb-8 p-6 bg-blue-900/30 rounded-2xl border border-blue-400/20">
                   <h2 className="text-xl font-semibold text-blue-200 mb-3 flex items-center gap-2">
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -265,7 +395,7 @@ const BlogDetail = () => {
                     </svg>
                     Summary
                   </h2>
-                  <p className="text-white/90 leading-relaxed text-lg">{blog.summery}</p>
+                  <p className="text-white/90 leading-relaxed text-lg">{blog.summary || blog.summery}</p>
                 </div>
               )}
 
@@ -276,10 +406,22 @@ const BlogDetail = () => {
                 </div>
               </div>
 
-              {/* Footer */}
+              {/* Footer - Reactions */}
               <div className="mt-12 pt-8 border-t border-white/10">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                 
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleToggleLike}
+                      disabled={liking}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${liked ? 'bg-pink-600 text-white' : 'bg-white/10 text-white hover:bg-white/20'} `}
+                      title={IsLoggedIn ? (liked ? 'Unlike' : 'Like') : 'Login to like'}
+                    >
+                      <svg className={`w-5 h-5 ${liked ? 'fill-current' : ''}`} viewBox="0 0 20 20">
+                        <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 18.828l-6.828-6.829a4 4 0 010-5.656z" />
+                      </svg>
+                      <span className="font-semibold">{likesCount}</span>
+                    </button>
+                  </div>
                   <div className="flex gap-3">
                     <button
                       onClick={handleShare}
@@ -300,6 +442,69 @@ const BlogDetail = () => {
                       Back to Blogs
                     </button>
                   </div>
+                </div>
+              </div>
+
+              {/* Comments Section */}
+              <div className="mt-8">
+                <h3 className="text-2xl font-bold text-white mb-4">Comments ({comments?.length || 0})</h3>
+                {commentMessage && (
+                  <div className="mb-3 text-green-300 bg-green-900/20 border border-green-500/30 rounded-lg px-3 py-2 text-sm">
+                    {commentMessage}
+                  </div>
+                )}
+                {commentError && (
+                  <div className="mb-3 text-red-300 bg-red-900/20 border border-red-500/30 rounded-lg px-3 py-2 text-sm">
+                    {commentError}
+                  </div>
+                )}
+                {/* New comment */}
+                <form onSubmit={handleAddComment} className="mb-6">
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder={IsLoggedIn ? 'Write a comment...' : 'Login to write a comment'}
+                      disabled={!IsLoggedIn || postingComment}
+                      className="flex-1 px-4 py-2 rounded-xl bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-blue-200"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!IsLoggedIn || postingComment || !newComment.trim()}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl"
+                    >
+                      {postingComment ? 'Posting...' : 'Post'}
+                    </button>
+                  </div>
+                </form>
+
+                {/* Comments list */}
+                <div className="space-y-4">
+                  {(comments || []).map((c) => {
+                    const canDelete = IsLoggedIn && (String(c.userId) === String(user?._id) || isOwner);
+                    return (
+                      <div key={c._id || c.createdAt} className="bg-white/10 border border-white/20 rounded-xl p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="text-blue-200 font-semibold">{c.userName || 'User'}</div>
+                            <div className="text-white/90 mt-1">{c.text}</div>
+                            <div className="text-xs text-blue-300 mt-2">{c.createdAt ? new Date(c.createdAt).toLocaleString() : ''}</div>
+                          </div>
+                          {canDelete && (
+                            <button
+                              onClick={() => handleDeleteComment(normalizeId(c._id))}
+                              disabled={normalizeId(deletingCommentId) === normalizeId(c._id)}
+                              className="text-red-300 hover:text-red-400 text-sm disabled:opacity-50"
+                              title="Delete comment"
+                            >
+                              {deletingCommentId === c._id ? 'Deleting...' : 'Delete'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

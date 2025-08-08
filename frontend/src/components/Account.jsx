@@ -162,7 +162,7 @@ export default function AccountPage() {
         params: { email },
       });
       setneName(newuser.data.user.fullname);
-      console.log(newuser.data.user.profileImgUrl);
+     
       setProfileImagePreview(
         `http://localhost:8000/${newuser.data.user.profileImgUrl}`
       );
@@ -347,6 +347,8 @@ export default function AccountPage() {
                         </p>
                         <div className="flex items-center gap-4 text-xs text-blue-300">
                           <span>Created: {new Date(blog.createdAt || Date.now()).toLocaleDateString()}</span>
+                          <span>Likes: {Array.isArray(blog.likedBy) ? blog.likedBy.length : 0}</span>
+                          <span>Comments: {Array.isArray(blog.comments) ? blog.comments.length : 0}</span>
                         </div>
                       </div>
                       <div className="flex gap-2 ml-4">

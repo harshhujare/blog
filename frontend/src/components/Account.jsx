@@ -3,6 +3,7 @@ import axios from "axios";
 import { useAuth } from "../../context/authcontext";
 import { useNavigate } from "react-router-dom";
 import { FaPen, FaPlus, FaTrash, FaEye } from "react-icons/fa";
+import Dashboard from "./Dashboard";
 export default function AccountPage() {
   const { SetIsLoggedIn, user,handelLogout } = useAuth();
   const userid = user?._id;
@@ -29,6 +30,7 @@ export default function AccountPage() {
     checkLogin();
     // eslint-disable-next-line
   }, []);
+
 
   useEffect(() => {
     if (userid) {
@@ -288,6 +290,13 @@ export default function AccountPage() {
                 Log Out
               </button>
             </div>
+          { user.role==="Admin"&& <button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#1643d9] to-pink-500 text-white font-bold shadow-lg hover:scale-105 hover:from-red-600 hover:to-pink-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2"
+              >
+               Go to Admin DashBoard
+              </button>}
           </form>
         </div>
         
@@ -380,7 +389,7 @@ export default function AccountPage() {
           </div>
         </div>
       </div>
-   
+  
     </div>
     </>
   );

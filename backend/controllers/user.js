@@ -164,6 +164,32 @@ const handelgetuser = async (req, res) => {
     console.log(err);
   }
 };
+
+// List users (basic directory)
+const handellistusers = async (req, res) => {
+  try {
+    const { q } = req.query;
+    const query = q
+      ? {
+          $or: [
+            { fullname: { $regex: q, $options: "i" } },
+            { email: { $regex: q, $options: "i" } },
+          ],
+        }
+      : {};
+
+    const users = await user
+      .find(query)
+      .select("fullname email profileImgUrl role isActive createdAt updatedAt");
+
+    return res.status(200).json({ success: true, users });
+  } catch (err) {
+    console.error("Failed to list users", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to list users" });
+  }
+};
 const handelupload = async (req, res) => {
   console.log("function is called")
   const id = req.params.userid;
@@ -204,5 +230,6 @@ module.exports = {
   handelLogout,
   handelupdate,
   handelgetuser,
+  handellistusers,
   handelupload,
 };

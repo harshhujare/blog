@@ -74,11 +74,13 @@ const Add = () => {
     formdata.append("createdby", fullname);
 
     try {
+      setTimeout(() =>  5000);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
     
      
       const res = await axios.post(
+       
         "http://localhost:8000/blog/upload",
         formdata,
         {

@@ -6,6 +6,8 @@ import Add from  "./components/Add"
 import Login from "./components/Login";
 import Account from "./components/Account";
 import BlogDetail from "./components/BlogDetail";
+import Dashboard from "./components/Dashboard";
+import Users from "./components/Users";
 import { AuthProvider } from "../context/authcontext";
 import { useAuth } from "../context/authcontext";
 
@@ -20,6 +22,9 @@ const App = () => {
         <Nav />
         <Routes>
           <Route path="/" element={<Hero />}        />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/dashboard/users" element={<Users />} />
           <Route path="/Add" element={<Add />}       />
           <Route path="/Signup" element={<Signup />} />
           <Route path="/Login" element={<Login/>}    />

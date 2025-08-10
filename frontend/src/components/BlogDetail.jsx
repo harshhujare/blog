@@ -34,6 +34,8 @@ const BlogDetail = () => {
   const [deletingCommentId, setDeletingCommentId] = useState(null);
   const [commentMessage, setCommentMessage] = useState(null); // success/info
   const [commentError, setCommentError] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [copying, setCopying] = useState(false);
 
   const normalizeId = (value) => {
     try {
@@ -117,6 +119,35 @@ const BlogDetail = () => {
       // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href);
       // You could add a toast notification here
+    }
+  };
+
+  const handleCopyContent = async () => {
+    if (!blog) return;
+    const contentParts = [
+      blog.title || '',
+      (blog.summary || blog.summery) ? `${blog.summary || blog.summery}` : '',
+      blog.description || ''
+    ];
+    const textToCopy = contentParts.filter(Boolean).join('\n\n');
+    try {
+      setCopying(true);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = textToCopy;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy content', err);
+    } finally {
+      setCopying(false);
     }
   };
 
@@ -423,6 +454,21 @@ const BlogDetail = () => {
                     </button>
                   </div>
                   <div className="flex gap-3">
+                    <button
+                      onClick={handleCopyContent}
+                      disabled={copying}
+                      className={`flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-full transition-all ${copied ? 'ring-2 ring-green-400/60' : ''}`}
+                      title={copied ? 'Copied!' : 'Copy content'}
+                      aria-label="Copy content"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {copied ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V5a2 2 0 012-2h7a2 2 0 012 2v7a2 2 0 01-2 2h-2M6 7a2 2 0 012-2h7a2 2 0 012 2v7a2 2 0 01-2 2H8a2 2 0 01-2-2V7z" />
+                        )}
+                      </svg>
+                    </button>
                     <button
                       onClick={handleShare}
                       className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full transition-all"

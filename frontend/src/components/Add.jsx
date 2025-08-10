@@ -6,36 +6,62 @@ import { useNavigate } from "react-router-dom";
 const Add = () => {
   const [image, setImage] = useState(null);
   const [error, setError] = useState("");
-
   const [imagePreview, setImagePreview] = useState(null);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [description, setDescription] = useState("");
-  const {user } = useAuth();
-  const userid=user?._id;
-const fullname=user?.fullname;
-const navigate = useNavigate();
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const { user } = useAuth();
+  const userid = user?._id;
+  const fullname = user?.fullname;
+  const navigate = useNavigate();
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
+
+    // File type validation
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+    if (!allowedTypes.includes(file?.type)) {
+      setError("Please upload a valid image file (JPEG, PNG, or GIF)");
+      return;
+    }
+
+    // File size validation (e.g., 5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file?.size > maxSize) {
+      setError("Image size should be less than 5MB");
+      return;
+    }
+
     setImage(file);
+    setError(""); // Clear any previous errors
+
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
+      };
+      reader.onerror = () => {
+        setError("Error reading file");
+        setImagePreview(null);
       };
       reader.readAsDataURL(file);
     } else {
       setImagePreview(null);
     }
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-
+    setError("");
+    setIsUploading(true);
+    setUploadProgress(0);
 
     // Check if required fields are filled
-    if (!title || !description || !image||!summary) {
+    if (!title || !description || !image || !summary) {
       setError("Please fill all required fields");
+      setIsUploading(false);
       return;
     }
 
@@ -44,13 +70,31 @@ const navigate = useNavigate();
     formdata.append("userid", userid);
     formdata.append("description", description);
     formdata.append("title", title);
-    formdata.append("summary",summary);
-    formdata.append("createdby",fullname);
-    
+    formdata.append("summary", summary);
+    formdata.append("createdby", fullname);
+
     try {
-      const res = await axios.post("http://localhost:8000/blog/upload", formdata, {
-        withCredentials: true
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+     
+      const res = await axios.post(
+        "http://localhost:8000/blog/upload",
+        formdata,
+        {
+          withCredentials: true,
+          signal: controller.signal,
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            setUploadProgress(percentCompleted);
+          },
+        }
+      );
+
+      clearTimeout(timeoutId);
+
       if (res.data.success) {
         navigate("/");
       } else {
@@ -58,13 +102,20 @@ const navigate = useNavigate();
       }
     } catch (err) {
       console.log(err);
-      if (err.response?.status === 401){
+      if (err.name === "AbortError") {
+        setError(
+          "Upload timed out. Please try again with a smaller image or check your connection."
+        );
+      } else if (err.response?.status === 401) {
         setError("Please login to add a blog");
       } else if (err.response?.status === 400) {
         setError("Invalid data. Please check your input.");
-      } else {
+      } else { 
         setError("Something went wrong. Please try again.");
       }
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -121,7 +172,7 @@ const navigate = useNavigate();
           </div>
           <div className="flex flex-col w-full gap-2">
             <label className="text-blue-200 font-semibold text-sm ml-1">
-             Summary
+              Summary
             </label>
             <input
               type="text"
@@ -149,11 +200,32 @@ const navigate = useNavigate();
 
           {error && <p className="text-red-600">{error}</p>}
 
+          {isUploading && (
+            <div className="w-full">
+              <div className="h-2 bg-blue-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-600 transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <p className="text-blue-200 text-sm text-center mt-2">
+                Uploading... {uploadProgress}%
+              </p>
+            </div>
+          )}
+
           <button
             type="submit"
-            className="w-full py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold shadow-lg hover:scale-105 hover:from-blue-600 hover:to-purple-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 mt-2"
+            disabled={isUploading}
+            className={`w-full py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold shadow-lg 
+    ${
+      !isUploading
+        ? "hover:scale-105 hover:from-blue-600 hover:to-purple-600"
+        : "opacity-50 cursor-not-allowed"
+    } 
+    transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 mt-2`}
           >
-            Add Blog
+            {isUploading ? "Uploading..." : "Add Blog"}
           </button>
         </form>
       </div>

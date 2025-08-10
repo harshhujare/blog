@@ -43,8 +43,8 @@ const Hero = () => {
       </div>
       {/* Hero Header */}
       <header className="w-full max-w-5xl mx-auto pt-16 pb-8 px-4 text-center">
-        <h1 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-purple-200 drop-shadow mb-4 animate-fade-in">Welcome to Blogiflex</h1>
-        <p className="text-xl md:text-2xl text-blue-200/90 mb-6 animate-fade-in-slow">Discover, read, and share amazing stories from our community.</p>
+        <h1 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-purple-200 drop-shadow mb-4 animate-fade-in">Welcome to MEMEflex</h1>
+        <p className="text-xl md:text-2xl text-blue-200/90 mb-6 animate-fade-in-slow">Discover, read, and share amazing MEME from our community.</p>
         <div className="flex flex-col md:flex-row items-center justify-center gap-4 animate-fade-in-slow">
           <div className="flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-3 py-2 w-full md:w-96">
             <input

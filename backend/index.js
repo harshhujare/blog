@@ -10,11 +10,11 @@ const authRoute=require("./routes/checkcookieRoutes");
 const imgroute=require("./routes/image");
 const blogroute=require("./routes/blog")
 const app=express();
-const PORT =8000;
+const PORT = process.env.PORT || 8000;
 app.use(cookieParser());
 app.use('/public', express.static('public')); 
 
-connectDb("mongodb://127.0.0.1:27017/smpleBlog").then(()=>{console.log("MongoDB connected");})
+connectDb("mongodb://127.0.0.1:27017/smpleBlog")
 app.use(cors({origin: "http://localhost:5173",credentials: true,}));
 app.use(express.json());
 app.use ('/user',userRoute);

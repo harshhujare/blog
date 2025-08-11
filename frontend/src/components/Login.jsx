@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
@@ -12,54 +12,56 @@ const{SetIsLoggedIn}=useAuth();
   const [Email, setEmail] = useState("");
   const [Password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const[loggingin,setloggingin]=useState(false);
   const[showPass,setShowpass]=useState(false);
   const navigate = useNavigate();
 
   const handelsubmit = async (e, validatePassword) => {
     e.preventDefault();
-    console.log("first")
+  setloggingin(true);
    
-    if (  !Email || !Password ) {
+    if (!Email || !Password) {
       setError("invalid details, plese fill details properly");
+      setloggingin(false);
+      return;
     }
-  else{
-      try {
-      const res = await axios.post("http://localhost:8000/user/Login", {
-       
-        email: Email,
-        password: Password,
-      }, {
-        withCredentials: true
-      });
-      if (res.data.success) {
-        SetIsLoggedIn(true)
-        navigate("/")
-      }
-     
  
-      
+    try {
+      const res = await axios.post(
+        "http://localhost:8000/user/Login",
+        {
+          email: Email,
+          password: Password,
+        },
+        {
+          withCredentials: true,
+        }
+      );
+      if (res.data.success) {
+        SetIsLoggedIn(true);
+        navigate("/");
+      }
+ 
       setEmail("");
       setPassword("");
-setError("")
-    
+      setError("");
     } catch (error) {
-      console.log(error)
-      const backendError=error?.response?.data;
-
-      if (backendError.message === "Wrong_Email_Password") {
-          setError("wrong email or password try again");
-        }else if(backendError.message === "Validation_failed"){
-            setError("server error try again");
-
-        }
-
-      
-      
+      console.log(error);
+      const backendError = error?.response?.data;
+ 
+      if (backendError?.message === "Wrong_Email_Password") {
+        setError("wrong email or password try again");
+      } else if (backendError?.message === "Validation_failed") {
+        setError("server error try again");
+      } else {
+        setError("something went wrong, please try again");
+      }
+    } finally {
+      setloggingin(false);
     }
     // if (validatePassword) {
     //   setError(error);
     // } 
-  }
    
   };
 
@@ -111,9 +113,37 @@ setError("")
         <button
           type="submit"
           onClick={handelsubmit}
-          className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-md shadow-md transition"
+          disabled={loggingin}
+          className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-80 text-white font-semibold rounded-md shadow-md transition"
         >
-          Signup
+          {loggingin ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg
+                className="animate-spin h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                ></path>
+              </svg>
+              Logging in...
+            </span>
+          ) : (
+            "Login"
+          )}
         </button>
         <div className=" mt-8 text-center" >Don't have any account? <Link className="text-blue-500" to="/Signup">Signup here</Link> </div>
       </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
+import api, { API_BASE_URL } from "../lib/api";
 import { useAuth } from "../../context/authcontext";
 import { useNavigate } from "react-router-dom";
 import { FaPen, FaPlus, FaTrash, FaEye } from "react-icons/fa";
@@ -40,9 +40,7 @@ export default function AccountPage() {
 
   const checkLogin = async () => {
     try {
-      const res = await axios.get("http://localhost:8000/auth/check", {
-        withCredentials: true,
-      });
+      const res = await api.get("/auth/check");
       const name = res.data.user.fullname;
       const email = res.data.user.email;
       const id = res.data.user._id;
@@ -58,7 +56,7 @@ export default function AccountPage() {
   const fetchUserBlogs = async () => {
     setLoadingBlogs(true);
     try {
-      const response = await axios.get(`http://localhost:8000/blog/user/${userid}`);
+      const response = await api.get(`/blog/user/${userid}`);
       if (response.data.success) {
         setUserBlogs(response.data.blogs);
       }
@@ -74,9 +72,7 @@ export default function AccountPage() {
     if (window.confirm("Are you sure you want to delete this blog?")) {
       setDeletingBlog(blogId);
       try {
-        const response = await axios.delete(`http://localhost:8000/blog/delete/${blogId}`, {
-          withCredentials: true
-        });
+        const response = await api.delete(`/blog/delete/${blogId}`);
         if (response.data.success) {
           // Remove the deleted blog from state
           setUserBlogs(prevBlogs => prevBlogs.filter(blog => blog._id !== blogId));
@@ -94,13 +90,13 @@ export default function AccountPage() {
     setSaving(true);
     try {
       // Update user info
-      await axios.put(
-        "http://localhost:8000/user/update",
+      await api.put(
+        "/user/update",
         {
           fullname: nName,
           email: formData.email,
         },
-        { withCredentials: true }
+        { }
       );
 
       // Only upload image if a new file is selected
@@ -108,8 +104,8 @@ export default function AccountPage() {
         const formdata = new FormData();
         formdata.append("image", profileImage);
 
-        await axios.put(
-          `http://localhost:8000/profile/upload/${userid}`,
+        await api.put(
+          `/profile/upload/${userid}`,
           formdata
         );
       }
@@ -160,14 +156,12 @@ export default function AccountPage() {
 
   const handelgetuser = async (email) => {
     try {
-      const newuser = await axios.get("http://localhost:8000/user/getuser", {
+      const newuser = await api.get("/user/getuser", {
         params: { email },
       });
       setneName(newuser.data.user.fullname);
      
-      setProfileImagePreview(
-        `http://localhost:8000/${newuser.data.user.profileImgUrl}`
-      );
+      setProfileImagePreview(`${API_BASE_URL}${newuser.data.user.profileImgUrl}`);
       // 
     } catch (err) {
       console.log(err);

@@ -4,6 +4,25 @@ const { CreateTokenForUser, validateToken } = require("../services/auth");
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
+const isProd = process.env.NODE_ENV === 'production';
+const cookieOptions = {
+  httpOnly: true,
+  secure: isProd,
+  sameSite: isProd ? 'none' : 'lax',
+  path: '/',
+  maxAge: 24 * 60 * 60 * 1000,
+};
+
+function toWebPath(p) {
+  if (!p || typeof p !== 'string') return p;
+  const norm = p.replace(/\\/g, '/');
+  if (norm.startsWith('/public/')) return norm;
+  if (norm.startsWith('public/')) return '/' + norm;
+  const idx = norm.lastIndexOf('/public/');
+  if (idx !== -1) return norm.slice(idx);
+  return '/' + norm.replace(/^\//, '');
+}
+
 const handelSignup = async (req, res) => {
   const { fullname, email, password } = req.body;
 
@@ -17,14 +36,10 @@ const handelSignup = async (req, res) => {
     const token = CreateTokenForUser(User);
     // Set cookie
 
+    // ensure web path on fresh user
+    User.profileImgUrl = toWebPath(User.profileImgUrl);
     return res
-      .cookie("token", token, {
-        httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        path: "/",
-        maxAge: 24 * 60 * 60 * 1000,
-      })
+      .cookie("token", token, cookieOptions)
       .status(200)
       .json({ message: "usercreated successfully", success: true, User });
   } catch (err) {
@@ -64,14 +79,7 @@ const handelLogin = async (req, res) => {
 
       // Set cookie with proper options
       res
-        .cookie("token", token, {
-          httpOnly: true,
-          secure: false,
-          sameSite: "lax",
-
-          path: "/",
-          maxAge: 24 * 60 * 60 * 1000,
-        })
+        .cookie("token", token, cookieOptions)
         .status(200)
         .json({
           message: "login successful",
@@ -116,13 +124,9 @@ const handelCheck = (req, res) => {
 //handelLogout
 const handelLogout = (req, res) => {
   try {
-    res.clearCookie("token", {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-
-      path: "/",
-    });
+    const clearOpts = { ...cookieOptions };
+    delete clearOpts.maxAge;
+    res.clearCookie("token", clearOpts);
     res.json({ success: true });
   } catch (error) {
     console.log("this is the error", error);
@@ -158,6 +162,8 @@ const handelgetuser = async (req, res) => {
         .status(400)
         .json({ sucess: false, error: "faild to get user" });
     }
+    // normalize image path for client
+    result.profileImgUrl = toWebPath(result.profileImgUrl);
     res.status(200).json({ user: result, sucess: true });
   } 
   catch(err) {
@@ -182,7 +188,12 @@ const handellistusers = async (req, res) => {
       .find(query)
       .select("fullname email profileImgUrl role isActive createdAt updatedAt");
 
-    return res.status(200).json({ success: true, users });
+    const normalized = users.map(u => ({
+      ...u.toObject(),
+      profileImgUrl: toWebPath(u.profileImgUrl),
+    }));
+
+    return res.status(200).json({ success: true, users: normalized });
   } catch (err) {
     console.error("Failed to list users", err);
     return res
@@ -191,32 +202,34 @@ const handellistusers = async (req, res) => {
   }
 };
 const handelupload = async (req, res) => {
-  console.log("function is called")
   const id = req.params.userid;
-  console.log("id is",id)
-  const newimg = req.file.path;
+  const uploadedFsPath = req.file?.path;
+
+  if (!uploadedFsPath) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
 
   try {
-
     const nuser = await user.findById(id);
-    console.log("first this");
-
     if (!nuser) return res.status(404).json({ error: "User not found" });
-   
-    if (nuser.profileImgUrl && nuser.profileImgUrl !== "image.png") {
-     
-      const oldpath = path.join(
-        
-        nuser.profileImgUrl
-      ); 
-      console.log(oldpath,"hi")
-      fs.unlink(oldpath, (err) => {
-        if (err) console.error("error deleting old photo", err);
-      });
 
+    // Build web path (/public/...) for client consumption
+    const webPath = '/' + path
+      .relative(process.cwd(), uploadedFsPath)
+      .replace(/\\/g, '/');
+
+    // Delete old image if present and not default
+    if (nuser.profileImgUrl && nuser.profileImgUrl !== "/public/uploads/profile/image.png") {
+      const oldWebPath = nuser.profileImgUrl;
+      const oldAbsPath = path.isAbsolute(oldWebPath)
+        ? oldWebPath
+        : path.join(process.cwd(), oldWebPath.replace(/^\//, ''));
+      fs.unlink(oldAbsPath, (err) => {
+        if (err) console.error("error deleting old photo", err.message || err);
+      });
     }
 
-    nuser.profileImgUrl = newimg;
+    nuser.profileImgUrl = webPath;
     await nuser.save();
     res.status(200).json({ success: true, nuser });
   } catch (err) {

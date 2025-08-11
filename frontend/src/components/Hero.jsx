@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../lib/api'
 import Card from './card'
+import { API_BASE_URL } from '../lib/api';
+const ASSET_BASE = API_BASE_URL;
 
 const Hero = () => {
   const [blogs, setBlogs] = useState([]);
@@ -13,7 +15,7 @@ const Hero = () => {
   const fetchBlogs = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("http://localhost:8000/blog/getblog", {
+      const res = await api.get("/blog/getblog", {
         params: { search, page, limit: 9 }
       });
       setBlogs(res.data.blogs || []);
@@ -74,7 +76,7 @@ const Hero = () => {
                     <Card
                       id={blog._id}
                       title={blog.title}
-                      titalimg={`http://localhost:8000/${blog.titalimg}`}
+                       titalimg={`${ASSET_BASE}${blog.titalimg}`}
                       createdby={blog.createdby}
                       summary={blog.summary}
                       likes={Array.isArray(blog.likedBy) ? blog.likedBy.length : 0}

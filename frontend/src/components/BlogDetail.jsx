@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api, { API_BASE_URL } from '../lib/api';
 import { useAuth } from '../../context/authcontext';
 
 function stringToColor(str) {
@@ -53,7 +53,7 @@ const BlogDetail = () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await axios.get(`http://localhost:8000/blog/getblog/${id}`);
+        const res = await api.get(`/blog/getblog/${id}`);
         const b = res.data.blog;
         setBlog(b);
         const likedBy = Array.isArray(b?.likedBy) ? b.likedBy : [];
@@ -163,10 +163,9 @@ const BlogDetail = () => {
     }
     try {
       setLiking(true);
-      const res = await axios.post(
-        `http://localhost:8000/blog/${id}/like`,
-        {},
-        { withCredentials: true }
+      const res = await api.post(
+        `/blog/${id}/like`,
+        {}
       );
       if (res.data?.success) {
         setLiked(res.data.liked);
@@ -189,10 +188,9 @@ const BlogDetail = () => {
     if (!text) return;
     try {
       setPostingComment(true);
-      const res = await axios.post(
-        `http://localhost:8000/blog/${id}/comments`,
-        { text },
-        { withCredentials: true }
+      const res = await api.post(
+        `/blog/${id}/comments`,
+        { text }
       );
       if (res.data?.success) {
         setComments(res.data.comments || []);
@@ -218,14 +216,9 @@ const BlogDetail = () => {
       setDeletingCommentId(commentId);
       // Optimistic update
       setComments((prev) => prev.filter((c) => normalizeId(c._id) !== normalizeId(commentId)));
-      const res = await axios.delete(
-        `http://localhost:8000/blog/${id}/comments/${commentId}`,
-        {
-          withCredentials: true,
-          headers: {
-            'Accept': 'application/json',
-          },
-        }
+      const res = await api.delete(
+        `/blog/${id}/comments/${commentId}`,
+        { headers: { 'Accept': 'application/json' } }
       );
       if (res.data?.success) {
         // Use authoritative server state if provided
@@ -369,7 +362,7 @@ const BlogDetail = () => {
               )}
               
               <img
-                src={blog.titalimg ? `http://localhost:8000/${blog.titalimg}` : '/assets/image.png'}
+                src={blog.titalimg ? `${API_BASE_URL}${blog.titalimg}` : '/assets/image.png'}
                 alt={blog.title}
                 className={`object-cover w-full h-full transition-opacity duration-500 ${
                   imageLoading ? 'opacity-0' : 'opacity-100'

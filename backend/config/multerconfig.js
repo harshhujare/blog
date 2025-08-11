@@ -5,12 +5,15 @@ const fs = require('fs');
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-      let dest="./public/uploads"
-      if(file.fieldname=="image"){
-        dest+="/profile"
+      const baseUploadsDir = process.env.UPLOAD_DIR
+        ? path.resolve(process.env.UPLOAD_DIR)
+        : path.join(process.cwd(), 'public', 'uploads');
+      let dest = baseUploadsDir;
+      if (file.fieldname === 'image') {
+        dest = path.join(baseUploadsDir, 'profile');
       }
-      if(file.fieldname=="blogimg"){
-        dest+="/blogimg"
+      if (file.fieldname === 'blogimg') {
+        dest = path.join(baseUploadsDir, 'blogimg');
       }
       fs.mkdirSync(dest, { recursive: true });
       cb(null, dest)

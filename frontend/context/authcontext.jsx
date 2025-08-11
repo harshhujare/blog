@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useMemo } from "react";
-import axios from "axios";
+import api from "../src/lib/api";
 import { useNavigate } from "react-router-dom";
 
 const Authcontext = createContext();
@@ -39,9 +39,7 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
       if (IsLoggedIn && !user) {
         try {
-          const res = await axios.get("http://localhost:8000/auth/check", {
-            withCredentials: true,
-          });
+          const res = await api.get("/auth/check");
           setUser(res.data.user);
 
           
@@ -63,10 +61,9 @@ export const AuthProvider = ({ children }) => {
   const signup = async (fullname, email, password) => {
     try {
       console.log("net");
-      const res = await axios.post(
-        "http://localhost:8000/user/signup",
-        { fullname, email, password },
-        { withCredentials: true }
+      const res = await api.post(
+        "/user/signup",
+        { fullname, email, password }
       );
       console.log("first");
       if (res.data.success) {
@@ -85,9 +82,7 @@ export const AuthProvider = ({ children }) => {
   };
   const handelLogout = async () => {
     try {
-      const res = await axios.get("http://localhost:8000/user/logout", {
-        withCredentials: true,
-      });
+      const res = await api.get("/user/logout");
       if (res.data.success) {
         localStorage.removeItem("user");
         localStorage.removeItem("isLoggedIn");

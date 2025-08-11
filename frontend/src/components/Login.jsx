@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../lib/api";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/authcontext"; 
@@ -27,14 +27,11 @@ const{SetIsLoggedIn}=useAuth();
     }
  
     try {
-      const res = await axios.post(
-        "http://localhost:8000/user/Login",
+      const res = await api.post(
+        "/user/Login",
         {
           email: Email,
           password: Password,
-        },
-        {
-          withCredentials: true,
         }
       );
       if (res.data.success) {

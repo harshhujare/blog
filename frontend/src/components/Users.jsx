@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
+import api, { API_BASE_URL } from '../lib/api';
 
 const statusColor = (isActive) => (isActive ? 'text-emerald-300 bg-emerald-500/10 border-emerald-400/30' : 'text-rose-300 bg-rose-500/10 border-rose-400/30');
 
@@ -13,7 +13,7 @@ const Users = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get(`http://localhost:8000/user/list`, { params: { q } });
+      const res = await api.get(`/user/list`, { params: { q } });
       setUsers(Array.isArray(res.data?.users) ? res.data.users : []);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load users');
@@ -69,7 +69,7 @@ const Users = () => {
                 <li key={u._id} className="grid grid-cols-12 gap-4 items-center p-4 border-t border-white/10">
                   <div className="col-span-5 flex items-center gap-3">
                     <img
-                      src={u.profileImgUrl ? `http://localhost:8000/${u.profileImgUrl}` : '/assets/image.png'}
+                      src={u.profileImgUrl ? `${API_BASE_URL}${u.profileImgUrl}` : '/assets/image.png'}
                       className="w-10 h-10 rounded-full object-cover border border-white/20"
                       alt={u.fullname}
                       onError={(e) => { e.currentTarget.src = '/assets/image.png'; }}

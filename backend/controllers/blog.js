@@ -1,17 +1,29 @@
 const blog = require("../models/bolg");
 const fs = require("fs");
 const path = require("path");
+
+function toWebPath(p) {
+  if (!p || typeof p !== 'string') return p;
+  const norm = p.replace(/\\/g, '/');
+  if (norm.startsWith('/public/')) return norm;
+  if (norm.startsWith('public/')) return '/' + norm;
+  const idx = norm.lastIndexOf('/public/');
+  if (idx !== -1) return norm.slice(idx);
+  return '/' + norm.replace(/^\//, '');
+}
 //post a blog
 const handelblog = async (req, res) => {
   const { userid, description, title, createdby, summary } = req.body;
 
-  const newimg = req.file.path;
+  const webPath = '/' + require('path')
+    .relative(process.cwd(), req.file.path)
+    .replace(/\\/g, '/');
   try {
     await blog.create({
       userid: userid,
       description: description,
       title: title,
-      titalimg: newimg,
+      titalimg: webPath,
       createdby: createdby,
       summary: summary,
     });
@@ -47,9 +59,16 @@ const getblog = async (req, res) => {
         .limit(pageSize),
     ]);
 
+    // normalize image paths
+    const normalized = items.map((b) => {
+      if (!b) return b;
+      b.titalimg = toWebPath(b.titalimg);
+      return b;
+    });
+
     return res.json({
       success: true,
-      blogs: items,
+      blogs: normalized,
       pagination: {
         total,
         page: pageNum,
@@ -72,6 +91,7 @@ const getblogbyid = async (req, res) => {
         .status(400)
         .json({ message: "no blog found", success: false });
     }
+    Blog.titalimg = toWebPath(Blog.titalimg);
     return res.json({ success: true, blog: Blog });
   } catch (err) {
     console.log(err);
@@ -94,7 +114,11 @@ const getBlogsByUserId = async (req, res) => {
         success: false,
       });
     }
-    return res.json({ success: true, blogs: userBlogs });
+    const normalized = userBlogs.map(b => ({
+      ...b.toObject(),
+      titalimg: toWebPath(b.titalimg),
+    }));
+    return res.json({ success: true, blogs: normalized });
   } catch (err) {
     console.log(err);
     res.status(500).json({
@@ -116,15 +140,15 @@ const deleteBlog = async (req, res) => {
         .json({ message: "blog not found", success: false });
     }
 
-    const imagePath = found.titalimg; // stored as e.g. public/uploads/blogimg/<file>
+    const imagePath = found.titalimg; // stored as e.g. /public/uploads/blogimg/<file>
 
     await found.deleteOne();
 
     if (imagePath && typeof imagePath === "string") {
       try {
-        const absolutePath = path.isAbsolute(imagePath)
-          ? imagePath
-          : path.join(process.cwd(), imagePath);
+        const absolutePath = imagePath.startsWith('/public/')
+          ? path.join(process.cwd(), imagePath.replace(/^\//, ''))
+          : (path.isAbsolute(imagePath) ? imagePath : path.join(process.cwd(), imagePath));
         await fs.promises.unlink(absolutePath);
       } catch (unlinkErr) {
         // Log but do not fail the whole request

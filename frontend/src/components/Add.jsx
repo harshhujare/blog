@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "../lib/api";
 import { useAuth } from "../../context/authcontext";
 import { useNavigate } from "react-router-dom";
 
@@ -79,17 +79,14 @@ const Add = () => {
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
     
      
-      const res = await axios.post(
-       
-        "http://localhost:8000/blog/upload",
+      const res = await api.post(
+        "/blog/upload",
         formdata,
         {
-          withCredentials: true,
           signal: controller.signal,
           onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
+            const total = progressEvent.total || 1;
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / total);
             setUploadProgress(percentCompleted);
           },
         }

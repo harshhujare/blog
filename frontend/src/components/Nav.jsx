@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import api from "../lib/api";
 import { useWindowScroll } from "react-use";
 import { useRef } from "react";
 import { useAuth } from "../../context/authcontext";
@@ -15,9 +15,7 @@ const Nav = () => {
 
   const checkLogin = async () => {
     try {
-      const res = await axios.get("http://localhost:8000/auth/check", {
-        withCredentials: true,
-      });
+      const res = await api.get("/auth/check");
       SetIsLoggedIn(res.data.loggedIn);
     } catch (error) {
       SetIsLoggedIn(false);

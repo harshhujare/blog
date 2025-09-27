@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import api from '../lib/api'
-import Card from './card'
+import Card from './UI/card'
+import Cardskeleton from './UI/Skeletons/Cardskeleton'
 import { API_BASE_URL } from '../lib/api';
 const ASSET_BASE = API_BASE_URL;
 
@@ -18,6 +19,8 @@ const Hero = () => {
       const res = await api.get("/blog/getblog", {
         params: { search, page, limit: 9 }
       });
+      // console.log(res.data.blogs);
+
       setBlogs(res.data.blogs || []);
       setPages(res.data?.pagination?.pages || 1);
       setTotal(res.data?.pagination?.total || 0);
@@ -29,24 +32,18 @@ const Hero = () => {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchBlogs();
     // eslint-disable-next-line
   }, [page]);
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-[#1a1a2e] via-[#23234b] to-[#0f2027] relative overflow-hidden flex flex-col">
+    <div className="min-h-screen w-full relative overflow-hidden flex flex-col transition-colors duration-500">
       {/* Decorative blurred shapes */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500 opacity-20 rounded-full blur-3xl animate-pulse" style={{ filter: "blur(120px)", left: "-10%", top: "-10%" }}></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-400 opacity-20 rounded-full blur-3xl animate-pulse" style={{ filter: "blur(120px)", right: "-10%", bottom: "-10%" }}></div>
-        <div className="absolute top-1/3 left-1/4 w-72 h-72 bg-indigo-400/20 rounded-full blur-3xl" />
-      </div>
+     
       {/* Hero Header */}
-      <header className="w-full max-w-5xl mx-auto pt-16 pb-8 px-4 text-center">
-        <h1 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-purple-200 drop-shadow mb-4 animate-fade-in">Welcome to MEMEflex</h1>
-        <p className="text-xl md:text-2xl text-blue-200/90 mb-6 animate-fade-in-slow">Discover, read, and share amazing MEME from our community.</p>
+      <header className="w-full max-w-5xl mx-auto pt-4 pb-8 px-4 text-center">
+        <h1 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-purple-200 drop-shadow mb-4 animate-fade-in">sasta Instagram</h1>
         <div className="flex flex-col md:flex-row items-center justify-center gap-4 animate-fade-in-slow">
           <div className="flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-3 py-2 w-full md:w-96">
             <input
@@ -58,13 +55,18 @@ const Hero = () => {
             />
             <button onClick={() => { setPage(1); fetchBlogs(); }} className="px-4 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full">Search</button>
           </div>
-          <a href="/Add" className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full font-semibold shadow hover:from-blue-600 hover:to-purple-600 transition-all duration-200">Write a Blog</a>
+          <a href="/Add" className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full font-semibold shadow hover:from-blue-600 hover:to-purple-600 transition-all duration-200">Post</a>
         </div>
       </header>
       {/* Blog Cards Grid */}
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 pb-16">
         {loading ? (
-          <div className="text-center text-white">Loading...</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 justify-items-center">
+            <Cardskeleton />
+            <Cardskeleton />
+            <Cardskeleton />
+            <Cardskeleton />
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 justify-items-center animate-fade-in-slow">
@@ -76,8 +78,10 @@ const Hero = () => {
                     <Card
                       id={blog._id}
                       title={blog.title}
-                       titalimg={`${ASSET_BASE}${blog.titalimg}`}
+                      
+                       titalimg={blog.titalimg}
                       createdby={blog.createdby}
+                      createdAt={blog.createdAt}
                       summary={blog.summary}
                       likes={Array.isArray(blog.likedBy) ? blog.likedBy.length : 0}
                       comments={Array.isArray(blog.comments) ? blog.comments.length : 0}

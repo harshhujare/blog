@@ -1,5 +1,4 @@
 const { Schema, model } = require("mongoose");
-const { createHmac, randomBytes } = require("crypto");
 const bcrypt = require("bcrypt");
 const userSchema = new Schema(
   {
@@ -12,6 +11,11 @@ const userSchema = new Schema(
       required: true,
       unique: true,
     },
+    about:{
+      type: String,
+    
+    }
+    ,
     salt: {
       type: String,
     },
@@ -25,7 +29,7 @@ const userSchema = new Schema(
     },
     role: {
       type: String,
-      enum: ["USER", "ADMIN"],
+      enum: ["USER", "ADMIN","APPROVER"],
       default: "USER",
     },
     isActive: {

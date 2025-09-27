@@ -22,6 +22,10 @@ const blogSchema = new Schema(
     summary: {
       type: String,
     },
+    AP_Status:{
+      type:String,
+      default:"Rejected"
+    },
     // Array of userIds who liked this blog. Length of this array is the like count.
     likedBy: {
       type: [String],
